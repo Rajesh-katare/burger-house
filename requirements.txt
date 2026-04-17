@@ -1,0 +1,7 @@
+Flask
+Flask-SQLAlchemy
+Flask-Session
+Werkzeug
+razorpay
+gunicorn
+python-dotenv
