@@ -359,6 +359,25 @@ def order_status(order_id):
 # Initialize DB tables if they don't exist (Must be outside __main__ for gunicorn/Render)
 with app.app_context():
     db.create_all()
+    
+    # Automatically seed the menu on every boot if it happens to be empty (Render Ephemeral Fix)
+    try:
+        from init_db import menu_items
+        if MenuItem.query.count() == 0:
+            for item in menu_items:
+                mi = MenuItem(
+                    id=item['id'],
+                    name=item['name'],
+                    price=item['price'],
+                    desc=item['desc'],
+                    image=item['image'],
+                    icon=item['icon']
+                )
+                db.session.add(mi)
+            db.session.commit()
+            print("Auto-seeded database successfully!")
+    except Exception as e:
+        print("Failed to auto-seed database:", e)
 
 if __name__ == '__main__':
     debug_mode = os.environ.get('FLASK_ENV') == 'development'
