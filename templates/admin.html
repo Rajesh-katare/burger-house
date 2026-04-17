@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="admin-container" style="max-width: 1200px; margin: 40px auto; padding: 20px;">
+    
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; border-bottom: 2px solid var(--accent-color); padding-bottom: 10px;">
+        <h2 style="font-size: 2.5rem; color: var(--text-primary);">System Database Dashboard</h2>
+        <div style="display: flex; align-items: center; gap: 15px;">
+            <span style="background: var(--accent-color); color: white; padding: 5px 15px; border-radius: 20px; font-weight: 600;">Admin View</span>
+            <a href="/admin/logout" style="color: #f87171; text-decoration: none; font-size: 0.9rem; border: 1px solid #f87171; padding: 4px 12px; border-radius: 12px; transition: all 0.2s;">Logout</a>
+        </div>
+    </div>
+
+    <!-- Registered Users Database -->
+    <section class="db-section" style="background: var(--surface-color); padding: 30px; border-radius: var(--border-radius); border: 1px solid var(--border-color); margin-bottom: 40px;">
+        <h3 style="color: var(--accent-color); font-size: 1.8rem; margin-bottom: 20px;">Registered Users</h3>
+        
+        {% if users %}
+        <div style="overflow-x: auto;">
+            <table style="width: 100%; border-collapse: collapse; text-align: left;">
+                <thead>
+                    <tr style="background: rgba(255, 107, 0, 0.1); border-bottom: 2px solid var(--accent-color);">
+                        <th style="padding: 15px; font-weight: 600;">ID</th>
+                        <th style="padding: 15px; font-weight: 600;">Full Name</th>
+                        <th style="padding: 15px; font-weight: 600;">Email Address</th>
+                        <th style="padding: 15px; font-weight: 600;">Password Hash (Encrypted)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for u in users %}
+                    <tr style="border-bottom: 1px solid var(--border-color); transition: background 0.2s;">
+                        <td style="padding: 15px; color: var(--text-secondary);">#{{ u.id }}</td>
+                        <td style="padding: 15px; font-weight: bold;">{{ u.name }}</td>
+                        <td style="padding: 15px; color: #a1a1aa;">{{ u.email }}</td>
+                        <td style="padding: 15px; font-family: monospace; color: #6ee7b7; font-size: 0.85rem;">{{ u.password_hash[:25] }}...</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p style="color: var(--text-secondary); font-style: italic;">No users registered yet in the database.</p>
+        {% endif %}
+    </section>
+
+    <!-- Orders Database -->
+    <section class="db-section" style="background: var(--surface-color); padding: 30px; border-radius: var(--border-radius); border: 1px solid var(--border-color);">
+        <h3 style="color: var(--accent-color); font-size: 1.8rem; margin-bottom: 20px;">Customer Orders</h3>
+        
+        {% if orders %}
+        <div style="overflow-x: auto;">
+            <table style="width: 100%; border-collapse: collapse; text-align: left;">
+                <thead>
+                    <tr style="background: rgba(255, 107, 0, 0.1); border-bottom: 2px solid var(--accent-color);">
+                        <th style="padding: 15px; font-weight: 600;">Order ID</th>
+                        <th style="padding: 15px; font-weight: 600;">Assigned User</th>
+                        <th style="padding: 15px; font-weight: 600;">Date Placed</th>
+                        <th style="padding: 15px; font-weight: 600;">Payment</th>
+                        <th style="padding: 15px; font-weight: 600;">Delivery Addr</th>
+                        <th style="padding: 15px; font-weight: 600;">Items Ordered</th>
+                        <th style="padding: 15px; font-weight: 600;">Total Paid</th>
+                        <th style="padding: 15px; font-weight: 600;">Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for o in orders %}
+                    <tr style="border-bottom: 1px solid var(--border-color); transition: background 0.2s;">
+                        <td style="padding: 15px; font-weight: bold; color: var(--accent-color);">#{{ o.id }}</td>
+                        <td style="padding: 15px;">{% if o.user_id %}User #{{ o.user_id }}{% else %}<span style="color: #a1a1aa; font-style: italic;">Guest Order</span>{% endif %}</td>
+                        <td style="padding: 15px; color: var(--text-secondary); font-size: 0.9rem;">{{ o.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                        <td style="padding: 15px;">
+                            {% if o.payment_method == 'UPI' %}
+                                <span style="background: #3b82f6; color: white; padding: 3px 8px; border-radius: 4px; font-size: 0.8rem;">Online UPI</span>
+                            {% elif o.payment_method == 'CARD' %}
+                                <span style="background: #8b5cf6; color: white; padding: 3px 8px; border-radius: 4px; font-size: 0.8rem;">Card</span>
+                            {% elif o.payment_method == 'NETBANK' %}
+                                <span style="background: #14b8a6; color: white; padding: 3px 8px; border-radius: 4px; font-size: 0.8rem;">Net Banking</span>
+                            {% else %}
+                                <span style="background: #eab308; color: black; padding: 3px 8px; border-radius: 4px; font-size: 0.8rem;">Cash / COD</span>
+                            {% endif %}
+                        </td>
+                        <td style="padding: 15px; max-width: 150px; font-size: 0.85rem;">
+                            <a href="https://www.google.com/maps/search/?api=1&query={{ o.delivery_address | urlencode }}" target="_blank" style="color: var(--accent-color); text-decoration: underline; display: flex; align-items: center; gap: 5px;">
+                                📍 View Map
+                            </a>
+                            <div style="margin-top: 5px; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="{{ o.delivery_address }}">{{ o.delivery_address }}</div>
+                        </td>
+                        <td style="padding: 15px; font-size: 0.9rem; max-width: 200px;">
+                            <ul style="list-style-type: none; padding: 0; margin: 0;">
+                            {% for item in o.items %}
+                                <li style="margin-bottom: 5px; color: var(--text-primary);"><span style="color: var(--accent-color); font-weight: bold;">{{ item.quantity }}x</span> {{ item.menu_item.name }}</li>
+                            {% endfor %}
+                            </ul>
+                        </td>
+                        <td style="padding: 15px; font-weight: bold; color: #10b981;">₹{{ o.total_price }}</td>
+                        <td style="padding: 15px;">
+                            <span style="background: rgba(255,107,0,0.2); border: 1px solid var(--accent-color); padding: 4px 10px; border-radius: 12px; font-size: 0.8rem;">{{ o.status }}</span>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p style="color: var(--text-secondary); font-style: italic;">No orders have been placed yet.</p>
+        {% endif %}
+    </section>
+</div>
+{% endblock %}

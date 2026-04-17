@@ -1,0 +1,335 @@
+{% extends "base.html" %}
+
+{% block content %}
+<style>
+    .faq-layout {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 30px;
+        margin-top: 20px;
+    }
+    
+    @media (max-width: 800px) {
+        .faq-layout {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    /* Accordion Styles */
+    .accordion-item {
+        background: var(--surface-color);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        margin-bottom: 15px;
+        overflow: hidden;
+        transition: border-color 0.3s;
+    }
+
+    .accordion-item:hover {
+        border-color: var(--accent-color);
+    }
+
+    .accordion-header {
+        padding: 20px;
+        cursor: pointer;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-weight: 600;
+        font-size: 1.1rem;
+        background: rgba(255, 255, 255, 0.02);
+    }
+
+    .accordion-content {
+        padding: 0 20px;
+        max-height: 0;
+        overflow: hidden;
+        transition: max-height 0.4s ease, padding 0.4s ease;
+        color: var(--text-secondary);
+        line-height: 1.6;
+    }
+
+    .accordion-item.open .accordion-content {
+        padding: 20px;
+        max-height: 200px;
+        border-top: 1px solid var(--border-color);
+    }
+
+    .accordion-icon {
+        transition: transform 0.3s;
+    }
+    .accordion-item.open .accordion-icon {
+        transform: rotate(45deg);
+        color: var(--accent-color);
+    }
+
+    /* Chatbot Styles */
+    .chat-container {
+        background: var(--surface-color);
+        border: 1px solid var(--border-color);
+        border-radius: 16px;
+        display: flex;
+        flex-direction: column;
+        height: 500px;
+        overflow: hidden;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    }
+
+    .chat-header {
+        background: rgba(255, 107, 0, 0.1);
+        padding: 15px 20px;
+        border-bottom: 1px solid var(--accent-color);
+        display: flex;
+        align-items: center;
+        gap: 15px;
+    }
+
+    .chat-avatar {
+        font-size: 2rem;
+        background: var(--bg-color);
+        width: 50px;
+        height: 50px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        border: 2px solid var(--accent-color);
+    }
+
+    .chat-messages {
+        flex: 1;
+        padding: 20px;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+    }
+
+    .message {
+        max-width: 80%;
+        padding: 12px 16px;
+        border-radius: 16px;
+        margin-bottom: 5px;
+        line-height: 1.5;
+        font-size: 0.95rem;
+        animation: fadeIn 0.3s ease;
+    }
+
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    .msg-bot {
+        align-self: flex-start;
+        background: var(--bg-color);
+        border: 1px solid var(--border-color);
+        border-bottom-left-radius: 4px;
+    }
+
+    .msg-user {
+        align-self: flex-end;
+        background: var(--accent-color);
+        color: white;
+        border-bottom-right-radius: 4px;
+        box-shadow: 0 4px 15px var(--accent-glow);
+    }
+
+    .chat-input-area {
+        padding: 15px;
+        background: var(--bg-color);
+        border-top: 1px solid var(--border-color);
+        display: flex;
+        gap: 10px;
+    }
+
+    .chat-input-area input {
+        border-radius: 20px;
+        background: var(--surface-color);
+    }
+
+    .chat-input-area button {
+        background: var(--accent-color);
+        color: white;
+        border: none;
+        border-radius: 50%;
+        width: 45px;
+        height: 45px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: transform 0.2s;
+    }
+
+    .chat-input-area button:hover {
+        transform: scale(1.1);
+    }
+    
+    /* Scrollbar */
+    .chat-messages::-webkit-scrollbar { width: 6px; }
+    .chat-messages::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 3px; }
+</style>
+
+<div class="app-container">
+    <div style="text-align: center; margin-bottom: 40px;">
+        <h2 style="font-size: 2.5rem; color: var(--accent-color);">Help Center</h2>
+        <p style="color: var(--text-secondary); font-size: 1.1rem;">Find quick answers or talk to our virtual assistant!</p>
+    </div>
+
+    <div class="faq-layout">
+        
+        <!-- Accordion FAQ Section -->
+        <div>
+            <h3 style="margin-bottom: 20px; font-size: 1.5rem;">Common Questions</h3>
+            
+            <div class="accordion-item">
+                <div class="accordion-header" onclick="toggleAccordion(this)">
+                    <span>How do I place an order?</span>
+                    <span class="accordion-icon">+</span>
+                </div>
+                <div class="accordion-content">
+                    Browse our menu on the home page. When you find something you like, simply click it to add it to your cart. Once you are ready, click the 'Cart' button in the top right corner and head to the checkout page where you can submit your delivery details.
+                </div>
+            </div>
+
+            <div class="accordion-item">
+                <div class="accordion-header" onclick="toggleAccordion(this)">
+                    <span>What are your delivery zones and times?</span>
+                    <span class="accordion-icon">+</span>
+                </div>
+                <div class="accordion-content">
+                    We deliver anywhere within a 15-mile radius of downtown Food City. Delivery operations run from 10:00 AM to 11:30 PM, seven days a week. Expect most orders to arrive within 30-45 minutes!
+                </div>
+            </div>
+
+            <div class="accordion-item">
+                <div class="accordion-header" onclick="toggleAccordion(this)">
+                    <span>What is your refund policy?</span>
+                    <span class="accordion-icon">+</span>
+                </div>
+                <div class="accordion-content">
+                    If your food arrives cold, damaged, or if we missed an item, please contact us immediately at help@burgerhouse.com or call us at +91 9527345127. We will issue a full refund or send a replacement right away.
+                </div>
+            </div>
+
+            <div class="accordion-item">
+                <div class="accordion-header" onclick="toggleAccordion(this)">
+                    <span>Where can I find allergen information?</span>
+                    <span class="accordion-icon">+</span>
+                </div>
+                <div class="accordion-content">
+                    We take allergies seriously! Our kitchen processes dairy, gluten, soy, and nuts. Every menu item description gives a brief overview of ingredients. If you have a severe allergy, please call us directly before placing your order so we can make safe accommodations.
+                </div>
+            </div>
+            
+            <div class="accordion-item">
+                <div class="accordion-header" onclick="toggleAccordion(this)">
+                    <span>What payment methods are accepted?</span>
+                    <span class="accordion-icon">+</span>
+                </div>
+                <div class="accordion-content">
+                    We accept Cash on Delivery (COD), Online via UPI, Net Banking, and Credit/Debit cards. You can securely select your preferred method on the checkout page.
+                </div>
+            </div>
+        </div>
+
+        <!-- Chatbot Section -->
+        <div class="chat-container">
+            <div class="chat-header">
+                <div class="chat-avatar">🍔</div>
+                <div>
+                    <h3 style="margin: 0; font-size: 1.2rem;">BurgerBot</h3>
+                    <span style="font-size: 0.8rem; color: #10b981;">● Online</span>
+                </div>
+            </div>
+            
+            <div class="chat-messages" id="chat-messages">
+                <div class="message msg-bot">
+                    Hi there! I'm BurgerBot 👋<br><br>I can help answer questions about ordering, delivery, refunds, or our menu. What's on your mind?
+                </div>
+            </div>
+            
+            <form class="chat-input-area" id="chat-form">
+                <input type="text" id="chat-input" placeholder="Type your question..." required style="flex: 1;">
+                <button type="submit">➤</button>
+            </form>
+        </div>
+
+    </div>
+</div>
+
+<script>
+    // Accordion Logic
+    function toggleAccordion(header) {
+        const item = header.parentElement;
+        item.classList.toggle('open');
+    }
+
+    // Chatbot Logic
+    const chatForm = document.getElementById('chat-form');
+    const chatInput = document.getElementById('chat-input');
+    const chatMessages = document.getElementById('chat-messages');
+
+    const botKnowledge = [
+        // Greetings
+        { keywords: ['hi', 'hello', 'hey', 'yo', 'sup', 'morning', 'evening'], answer: "Hello there! I'm BurgerBot 👋. I can answer questions about orders, payments, missing items, refunds, and more. How can I help you today?" },
+        
+        // Damaged / Missing Products
+        { keywords: ['damage', 'damaged', 'broken', 'squished', 'ruined', 'mess', 'spilled'], answer: "Oh no! We're so sorry your food arrived damaged. 😔 Please send a photo of the damaged items and your Order ID to help@burgerhouse.com, and we will issue a full refund immediately!" },
+        { keywords: ['missing', 'missed', 'forgot', 'didn\'t get', 'left out', 'incomplete'], answer: "We sincerely apologize for the missing item! Please call us right away at +91 9527345127 or email help@burgerhouse.com with your Order ID, and we'll dispatch a runner with the missing item or process a refund." },
+        { keywords: ['cold', 'stale', 'terrible', 'bad quality'], answer: "Quality is our top priority! If your food isn't up to standard (e.g. cold or stale), please contact our support team at +91 9527345127 so we can make it right for you." },
+        
+        // Orders & Tracking
+        { keywords: ['track', 'status', 'where', 'late', 'hasn\'t arrived'], answer: "You can track your order in real-time! Once you checkout, you'll be redirected to a live GPS map. If you lost the page, check your email for the tracking link or call the restaurant." },
+        { keywords: ['cancel', 'change', 'modify', 'edit', 'wrong address'], answer: "Need to change or cancel? If the order was just placed, please call us IMMEDIATELY at +91 9527345127. If the food is already on the way, we might not be able to cancel it." },
+        { keywords: ['order', 'buy', 'purchase', 'place'], answer: "To place an order, browse the Home page, tap the items you crave to add them to your cart, and head over to Checkout to pay!" },
+        
+        // Payment
+        { keywords: ['pay', 'payment', 'card', 'upi', 'cash', 'options'], answer: "We accept Cash on Delivery (COD), major Credit/Debit Cards, UPI (GPay/PhonePe/Paytm), and Net Banking. Choose your favorite at checkout!" },
+        { keywords: ['declined', 'failed', 'error', 'charged twice', 'double charge'], answer: "If your payment failed but you were charged, the bank usually reverses it within 2-3 business days. If you're having trouble checking out, try Cash on Delivery instead!" },
+        
+        // General / Details
+        { keywords: ['delivery', 'time', 'zone', 'how long'], answer: "We deliver within a 15-mile radius. Delivery hours are 10:00 AM to 11:30 PM. Most orders arrive piping hot within 30-45 minutes!" },
+        { keywords: ['refund', 'money', 'return'], answer: "Refunds are processed to the original payment method and typically take 3-5 business days to reflect in your account. Cash orders will be refunded via UPI/Bank transfer." },
+        { keywords: ['allergy', 'allergens', 'gluten', 'vegan', 'nuts', 'diet'], answer: "We cater to many diets! Our Vegan Burger is 100% plant-based. If you have severe allergies (nuts, dairy, gluten), please add a note at checkout or call us." },
+        { keywords: ['human', 'person', 'agent', 'operator', 'representative', 'real'], answer: "I'm just a bot, but our fantastic human staff is ready to assist! 🍔 Give us a ring at +91 9527345127." },
+        { keywords: ['contact', 'number', 'phone', 'call', 'email'], answer: "You can reach us by phone at +91 9527345127 or via email at help@burgerhouse.com." }
+    ];
+
+    function addMessage(text, isUser) {
+        const div = document.createElement('div');
+        div.className = `message ${isUser ? 'msg-user' : 'msg-bot'}`;
+        div.innerHTML = text;
+        chatMessages.appendChild(div);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    chatForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const text = chatInput.value.trim();
+        if(!text) return;
+        
+        // Add User Message
+        addMessage(text, true);
+        chatInput.value = '';
+
+        // Determine Bot Response
+        setTimeout(() => {
+            const lowerText = text.toLowerCase();
+            let foundAnswer = "I'm not quite sure about that! Try asking about placing an order, delivery times, payment, or refunds. Or you can call us at +91 9527345127.";
+            
+            for(let item of botKnowledge) {
+                // If any keyword matches the user's input
+                if(item.keywords.some(kw => lowerText.includes(kw))) {
+                    foundAnswer = item.answer;
+                    break;
+                }
+            }
+            
+            addMessage(foundAnswer, false);
+        }, 600); // Simulate typing delay
+    });
+</script>
+
+{% endblock %}

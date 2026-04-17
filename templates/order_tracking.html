@@ -1,0 +1,470 @@
+{% extends "base.html" %}
+
+{% block content %}
+<!-- Leaflet CSS -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
+
+<!-- Custom Timeline Time CSS -->
+<style>
+    .step-time {
+        font-size: 0.8rem;
+        color: var(--text-secondary);
+        margin-top: 5px;
+        font-weight: bold;
+    }
+    .timeline-step.active .step-time {
+        color: var(--accent-color);
+    }
+    /* Scooter icon marker for leaflet */
+    .leaflet-marker-icon.scooter-marker {
+        font-size: 2rem;
+        filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
+        background: none;
+        border: none;
+        text-align: center;
+        line-height: 1;
+    }
+    .dark-map-layer { filter: invert(100%) hue-rotate(180deg) brightness(85%) contrast(90%); }
+    
+    .leaflet-routing-container {
+        display: none !important; /* Hide the ugly text directions box */
+    }
+    /* Custom Cancel Modal */
+    .modal-overlay {
+        position: fixed;
+        top: 0; left: 0; right: 0; bottom: 0;
+        background: rgba(0,0,0,0.6);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+        visibility: hidden;
+        opacity: 0;
+        transition: all 0.3s ease;
+    }
+    .modal-overlay.active {
+        visibility: visible;
+        opacity: 1;
+    }
+    .modal-content {
+        background: var(--surface-color);
+        padding: 40px;
+        border-radius: 20px;
+        text-align: center;
+        max-width: 400px;
+        width: 90%;
+        box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+        transform: translateY(30px) scale(0.95);
+        transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        border: 1px solid var(--border-color);
+    }
+    .modal-overlay.active .modal-content {
+        transform: translateY(0) scale(1);
+    }
+    .modal-icon {
+        font-size: 3.5rem;
+        margin-bottom: 20px;
+        background: rgba(239, 68, 68, 0.1);
+        width: 80px;
+        height: 80px;
+        line-height: 80px;
+        border-radius: 50%;
+        display: inline-block;
+        color: #ef4444;
+    }
+    .modal-title {
+        font-size: 1.5rem;
+        color: var(--text-primary);
+        margin-bottom: 15px;
+        font-weight: 700;
+    }
+    .modal-desc {
+        color: var(--text-secondary);
+        margin-bottom: 30px;
+        line-height: 1.6;
+        font-size: 1rem;
+    }
+    .modal-actions {
+        display: flex;
+        gap: 15px;
+        justify-content: center;
+    }
+    .modal-btn {
+        padding: 12px 24px;
+        border-radius: 10px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        flex: 1;
+        font-size: 1rem;
+    }
+    .btn-secondary {
+        background: transparent;
+        border: 1px solid var(--border-color);
+        color: var(--text-primary);
+    }
+    .btn-secondary:hover {
+        background: rgba(255,255,255,0.05);
+    }
+    .btn-danger {
+        background: #ef4444;
+        border: 1px solid #ef4444;
+        color: white;
+    }
+    .btn-danger:hover {
+        background: #dc2626;
+        box-shadow: 0 4px 15px rgba(239, 68, 68, 0.4);
+    }
+</style>
+
+<div class="tracking-container" style="max-width: 800px; margin: 40px auto; padding: 30px; background: var(--surface-color); border-radius: var(--border-radius); border: 1px solid var(--border-color);">
+    
+    <div style="text-align: center; margin-bottom: 30px;">
+        <h2 style="font-size: 2rem; color: var(--accent-color);">Order #{{ order.id }}</h2>
+        <p style="color: var(--text-secondary); font-size: 1.1rem;" id="time-elapsed-display">Calculating live route securely...</p>
+    </div>
+
+    <!-- Real Leaflet Map View -->
+    <div id="map" style="height: 350px; border-radius: 12px; border: 1px solid var(--border-color); position: relative; overflow: hidden; margin-bottom: 40px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+    </div>
+
+    <!-- Timeline -->
+    <div class="tracking-timeline">
+        <div class="timeline-step step-pending active" id="step-pending">
+            <div class="step-icon">📝</div>
+            <div class="step-label">Order Placed</div>
+            <div class="step-time" id="time-pending">--:--</div>
+        </div>
+        <div class="timeline-line"></div>
+        
+        <div class="timeline-step step-preparing" id="step-preparing">
+            <div class="step-icon">🍳</div>
+            <div class="step-label">Preparing</div>
+            <div class="step-time" id="time-preparing">--:--</div>
+        </div>
+        <div class="timeline-line"></div>
+        
+        <div class="timeline-step step-out" id="step-out">
+            <div class="step-icon">🛵</div>
+            <div class="step-label">Out for Delivery</div>
+            <div class="step-time" id="time-out">--:--</div>
+        </div>
+        <div class="timeline-line"></div>
+        
+        <div class="timeline-step step-delivered" id="step-delivered">
+            <div class="step-icon">🎉</div>
+            <div class="step-label">Delivered</div>
+            <div class="step-time" id="time-delivered">--:--</div>
+        </div>
+    </div>
+
+    <div style="margin-top: 40px; text-align: center;" id="address-container">
+        <p style="color: var(--text-secondary);">Delivery Address:</p>
+        <p style="font-weight: 600; font-size: 1.1rem; margin-top: 5px;" id="customer-address">{{ order.delivery_address }}</p>
+        
+        <div id="cancel-container" style="margin-top: 30px; display: none;">
+            <button onclick="openCancelModal()" class="submit-btn" style="background: #ef4444; width: auto; padding: 10px 30px; font-size: 0.9rem; transition: all 0.3s;" id="cancel-btn">
+                Cancel Order
+            </button>
+        </div>
+    </div>
+    
+    <div id="cancelled-banner" style="display: none; padding: 30px; background: rgba(239, 68, 68, 0.1); border: 1px solid #ef4444; border-radius: 12px; margin-top: 30px; text-align: center;">
+        <h3 style="color: #ef4444; margin-bottom: 10px;">🚫 Order Cancelled</h3>
+        <p style="color: var(--text-secondary);" id="refund-message">We have received your cancellation request.</p>
+    </div>
+
+    <!-- Custom Cancel Modal -->
+    <div class="modal-overlay" id="cancel-modal">
+        <div class="modal-content">
+            <div class="modal-icon">⚠️</div>
+            <h3 class="modal-title">Cancel Order?</h3>
+            <p class="modal-desc">Are you sure you want to cancel your order? This action cannot be undone.</p>
+            <div class="modal-actions">
+                <button class="modal-btn btn-secondary" onclick="closeCancelModal()">No, keep it</button>
+                <button class="modal-btn btn-danger" id="confirm-cancel-btn" onclick="executeCancelOrder()">Yes, Cancel</button>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<!-- Leaflet JS -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
+
+<script>
+    const orderId = {{ order.id }};
+    const orderLat = {{ order.lat if order.lat != None else 'null' }};
+    const orderLng = {{ order.lng if order.lng != None else 'null' }};
+    const customerAddressStr = document.getElementById('customer-address').textContent;
+    const timeDisplay = document.getElementById('time-elapsed-display');
+    const storeAddressStr = "Dr. D. Y. Patil College, Pimpri, Pune"; // More accurate string
+
+    // Exact GPS Coordinates for the store (D.Y. Patil College, Pimpri focus)
+    const storeCoordsExact = [18.6258, 73.8239]; 
+    
+    // Fallback Customer Coordinates (Center of Pimpri-Chinchwad instead of central Pune/Kasba Peth)
+    const fallbackCustomer = [18.6298, 73.7997];
+
+    let map = L.map('map').setView(storeCoordsExact, 13);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors',
+        className: 'dark-map-layer'
+    }).addTo(map);
+
+    let routingControl = null;
+    let scooterMarker = null;
+    let routeCoordinates = [];
+    let totalDriveSeconds = 0;
+    
+    // Config: 15 minutes static preparation time
+    const PREP_SECONDS = 900; 
+
+    // Function to format JS Date to HH:MM AM/PM
+    function formatTime(dateObj) {
+        let hours = dateObj.getHours();
+        let minutes = dateObj.getMinutes();
+        const ampm = hours >= 12 ? 'PM' : 'AM';
+        hours = hours % 12;
+        hours = hours ? hours : 12; // 0 should be 12
+        minutes = minutes < 10 ? '0'+minutes : minutes;
+        return hours + ':' + minutes + ' ' + ampm;
+    }
+
+    async function geocode(address) {
+        try {
+            // Append Pune to the search query to force local results
+            const searchQuery = address.toLowerCase().includes("pimpri") || address.toLowerCase().includes("pune") 
+                                ? address 
+                                : address + ", Pimpri-Chinchwad, Pune, Maharashtra";
+            
+            const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}`;
+            const res = await fetch(url);
+            const data = await res.json();
+            if (data && data.length > 0) {
+                return [parseFloat(data[0].lat), parseFloat(data[0].lon)];
+            }
+        } catch(e) { console.warn("Geocode failed", e); }
+        return null;
+    }
+
+    async function initializeRoute() {
+        let storeCoords = storeCoordsExact; // No need to guess the store location!
+        let customerCoords = fallbackCustomer;
+
+        if (orderLat !== null && orderLng !== null) {
+            customerCoords = [orderLat, orderLng];
+        } else {
+            customerCoords = await geocode(customerAddressStr) || fallbackCustomer;
+        }
+
+        // Custom Scooter Icon
+        var scooterIcon = L.divIcon({
+            html: '🛵',
+            className: 'scooter-marker',
+            iconSize: [40, 40],
+            iconAnchor: [20, 20]
+        });
+
+        // Initialize Scooter Marker at Store
+        scooterMarker = L.marker(storeCoords, {icon: scooterIcon}).addTo(map);
+
+        // Add Routing
+        routingControl = L.Routing.control({
+            waypoints: [
+                L.latLng(storeCoords[0], storeCoords[1]),
+                L.latLng(customerCoords[0], customerCoords[1])
+            ],
+            createMarker: function() { return null; }, // Hide default markers
+            lineOptions: {
+                styles: [{color: '#ff6b00', opacity: 0.8, weight: 5, dashArray: '10, 10'}]
+            },
+            show: false, // Hide the text directions box
+            addWaypoints: false,
+            draggableWaypoints: false,
+            fitSelectedRoutes: true
+        }).addTo(map);
+
+        routingControl.on('routesfound', function(e) {
+            const routes = e.routes;
+            const summary = routes[0].summary;
+            totalDriveSeconds = summary.totalTime;
+            routeCoordinates = routes[0].coordinates; // Array of LatLng objects
+            
+            // Re-center logic safely
+            map.fitBounds(routingControl.getPlan().getWaypoints().map(w => w.latLng));
+            
+            // Now start polling backend for order status
+            checkStatus();
+            setInterval(checkStatus, 5000);
+        });
+        
+        // Timeout fallback if routing fails
+        setTimeout(() => {
+            if (totalDriveSeconds === 0) {
+                timeDisplay.textContent = "Route error. Reverting to static tracking...";
+                totalDriveSeconds = 900; // Fake 15 min drive
+                checkStatus();
+                setInterval(checkStatus, 5000);
+            }
+        }, 5000);
+    }
+
+    // Dynamic Tracking & UI Update
+    async function checkStatus() {
+        try {
+            const res = await fetch(`/api/order/${orderId}/status`);
+            const data = await res.json();
+            
+            if (data.status === "Cancelled") {
+                updateUI("Cancelled", 0);
+                return;
+            }
+            
+            if(data.created_at) {
+                // Parse the UTC date, calculate elapsed
+                const createdDate = new Date(data.created_at);
+                const now = new Date();
+                const elapsedSeconds = Math.floor((now - createdDate) / 1000);
+
+                // Populate Chronological Timestamps!
+                document.getElementById('time-pending').textContent = formatTime(createdDate);
+                
+                const prepDate = new Date(createdDate.getTime() + (2 * 60000)); // Say prep starts 2 mins later
+                document.getElementById('time-preparing').textContent = formatTime(prepDate);
+                
+                const outDate = new Date(createdDate.getTime() + (PREP_SECONDS * 1000));
+                document.getElementById('time-out').textContent = formatTime(outDate);
+                
+                const deliverDate = new Date(outDate.getTime() + (totalDriveSeconds * 1000));
+                document.getElementById('time-delivered').textContent = formatTime(deliverDate);
+
+                // Calculate current status natively on frontend based on dynamic time
+                let dynamicStatus = "Pending";
+                if (elapsedSeconds < 120) dynamicStatus = "Pending";
+                else if (elapsedSeconds < PREP_SECONDS) dynamicStatus = "Preparing";
+                else if (elapsedSeconds < PREP_SECONDS + totalDriveSeconds) dynamicStatus = "Out for Delivery";
+                else dynamicStatus = "Delivered";
+
+                updateUI(dynamicStatus, Math.max(0, elapsedSeconds));
+            }
+        } catch(err) {
+            console.error("Status check failed", err);
+        }
+    }
+
+    function updateUI(status, elapsed) {
+        document.querySelectorAll('.timeline-step').forEach(el => el.classList.remove('active'));
+
+        const cancelContainer = document.getElementById('cancel-container');
+        cancelContainer.style.display = 'none';
+
+        if (status === 'Cancelled') {
+            document.getElementById('map').style.display = 'none';
+            document.querySelector('.tracking-timeline').style.display = 'none';
+            document.getElementById('address-container').style.display = 'none';
+            document.getElementById('cancelled-banner').style.display = 'block';
+            timeDisplay.textContent = 'This order has been cancelled.';
+            
+            {% if order.razorpay_payment_id %}
+            document.getElementById('refund-message').textContent = "Refund Initiated via Instant Transfer. It will reflect in your original payment method in under 10 minutes.";
+            {% endif %}
+            return;
+        }
+
+        if (status === 'Pending') {
+            cancelContainer.style.display = 'inline-block';
+            document.getElementById('step-pending').classList.add('active');
+            timeDisplay.textContent = 'Waiting for restaurant to confirm...';
+            moveScooter(0);
+        } else if (status === 'Preparing') {
+            cancelContainer.style.display = 'inline-block';
+            document.getElementById('step-pending').classList.add('active');
+            document.getElementById('step-preparing').classList.add('active');
+            timeDisplay.textContent = 'Your order is being cooked!';
+            moveScooter(0);
+        } else if (status === 'Out for Delivery') {
+            document.getElementById('step-pending').classList.add('active');
+            document.getElementById('step-preparing').classList.add('active');
+            document.getElementById('step-out').classList.add('active');
+            timeDisplay.textContent = 'Rider is on the way!';
+            
+            // Calculate progress percentage of just the drive time
+            let driveElapsed = elapsed - PREP_SECONDS;
+            let percent = driveElapsed / totalDriveSeconds;
+            if (percent < 0) percent = 0;
+            if (percent > 1) percent = 1;
+            moveScooter(percent);
+            
+        } else if (status === 'Delivered') {
+            document.querySelectorAll('.timeline-step').forEach(el => el.classList.add('active'));
+            timeDisplay.textContent = 'Order Delivered! Enjoy your meal.';
+            moveScooter(1);
+        }
+    }
+
+    function moveScooter(percent) {
+        if (!routeCoordinates || routeCoordinates.length === 0) return;
+        
+        let index = Math.floor(percent * (routeCoordinates.length - 1));
+        if (index < 0) index = 0;
+        if (index >= routeCoordinates.length) index = routeCoordinates.length - 1;
+        
+        let targetCoord = routeCoordinates[index];
+        scooterMarker.setLatLng([targetCoord.lat, targetCoord.lng]);
+    }
+
+    function openCancelModal() {
+        document.getElementById('cancel-modal').classList.add('active');
+    }
+
+    function closeCancelModal() {
+        document.getElementById('cancel-modal').classList.remove('active');
+    }
+
+    async function executeCancelOrder() {
+        const confirmBtn = document.getElementById('confirm-cancel-btn');
+        const mainBtn = document.getElementById('cancel-btn');
+        
+        confirmBtn.textContent = "Cancelling...";
+        confirmBtn.disabled = true;
+        mainBtn.disabled = true;
+
+        try {
+            const res = await fetch(`/api/order/${orderId}/cancel`, { method: 'POST' });
+            const data = await res.json();
+            
+            if (data.success) {
+                closeCancelModal();
+                if(data.refund_message && data.refund_message !== "Not Applicable") {
+                    document.getElementById('refund-message').textContent = data.refund_message;
+                }
+                checkStatus(); // re-poll immediately to trigger UI change
+            } else {
+                alert(data.error || "Failed to cancel order");
+                closeCancelModal();
+                confirmBtn.textContent = "Yes, Cancel";
+                confirmBtn.disabled = false;
+                mainBtn.disabled = false;
+            }
+        } catch(e) {
+            console.error(e);
+            alert("Network error.");
+            closeCancelModal();
+            confirmBtn.textContent = "Yes, Cancel";
+            confirmBtn.disabled = false;
+            mainBtn.disabled = false;
+        }
+    }
+
+    document.addEventListener("DOMContentLoaded", function() {
+        initializeRoute();
+    });
+
+</script>
+
+{% endblock %}
